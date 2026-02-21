@@ -1,0 +1,1 @@
+["buy_count", "buy_value", "buy_collections", "buy_last_ts", "buy_first_ts", "sell_count", "sell_value", "tx_count", "first_tx_ts", "total_trade_count", "sell_ratio", "pnl_proxy", "wallet_age_days", "days_since_last_buy", "recent_activity", "blend_in_count", "blend_out_count", "blend_net_value", "LP_count", "DeLP_count", "unique_interactions", "ratio"]
