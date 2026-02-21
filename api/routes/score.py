@@ -1,6 +1,7 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.jobs import create_job, get_job, run_job
+import asyncio
 
 router = APIRouter()
 
@@ -15,27 +16,44 @@ class VerifyRequest(BaseModel):
 
 
 @router.post("/v1/score")
-async def score(req: ScoreRequest, background_tasks: BackgroundTasks):
+async def score(req: ScoreRequest):
+    """Submit a batch job. Returns job_id for polling."""
+    if len(req.addresses) > 50_000:
+        raise HTTPException(400, "Max 50,000 addresses per batch")
     jid = create_job(req.addresses)
-    background_tasks.add_task(run_job, jid)
+    asyncio.create_task(run_job(jid))
     return {"job_id": jid, "status": "pending", "total": len(req.addresses)}
 
 
 @router.get("/v1/jobs/{job_id}")
 def job_status(job_id: str):
+    """Poll job status and results."""
     j = get_job(job_id)
     if not j:
-        return {"error": "not found"}, 404
+        raise HTTPException(404, "Job not found")
+    scored = [r for r in j["results"] if r.get("score") is not None]
     summary = {
-        "total": j["total"],
-        "high": sum(1 for r in j["results"] if r["risk"] == "high"),
-        "medium": sum(1 for r in j["results"] if r["risk"] == "medium"),
-        "low": sum(1 for r in j["results"] if r["risk"] == "low"),
+        "total":   j["total"],
+        "high":    sum(1 for r in scored if r["risk"] == "high"),
+        "medium":  sum(1 for r in scored if r["risk"] == "medium"),
+        "low":     sum(1 for r in scored if r["risk"] == "low"),
+        "unknown": sum(1 for r in j["results"] if r.get("risk") in ("unknown", "error")),
     }
-    return {**j, "progress": j["completed"] / max(j["total"], 1), "summary": summary}
+    return {
+        **j,
+        "progress": j["completed"] / max(j["total"], 1),
+        "summary":  summary,
+    }
 
 
 @router.post("/v1/verify")
-def verify(req: VerifyRequest):
-    from services.model import score_addresses
-    return score_addresses([req.address])[0]
+async def verify(req: VerifyRequest):
+    """
+    Real-time single-address scoring.
+    Known addresses: instant (cached Blur T30 data).
+    Unknown addresses: live Etherscan fetch (~5-10s).
+    """
+    if not req.address or len(req.address) < 10:
+        raise HTTPException(400, "Invalid address")
+    from services.model import score_address_live
+    return await score_address_live(req.address)

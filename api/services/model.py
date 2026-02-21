@@ -1,17 +1,39 @@
-import joblib
-import pandas as pd
-import numpy as np
+"""
+Scoring service.
+- Known addresses (in Blur T30 lookup): instant score from precomputed features.
+- Unknown addresses: live Etherscan fetch → compute features → score.
+"""
+
+import os
 import json
+import asyncio
+import numpy as np
+import pandas as pd
+import joblib
 
-lgb_model = joblib.load("api/models/lgb_blur_t30.joblib")
-iso_model = joblib.load("api/models/iso_blur.joblib")
-feature_names = json.load(open("api/models/feature_names.json"))
-df_lookup = pd.read_csv("api/data/nft_feats_labeled_T30.csv").set_index("address")
+# ── model loading ──────────────────────────────────────────────────────────────
+_BASE = os.path.dirname(os.path.abspath(__file__))
+_MODEL_DIR = os.path.join(_BASE, "..", "models")
+_DATA_DIR  = os.path.join(_BASE, "..", "data")
 
-# Pre-compute IF score bounds for normalization
-_iso_raw_all = -iso_model.decision_function(df_lookup[feature_names].values)
-_iso_min = float(_iso_raw_all.min())
-_iso_max = float(_iso_raw_all.max())
+lgb_model    = joblib.load(os.path.join(_MODEL_DIR, "lgb_blur_t30.joblib"))
+iso_model    = joblib.load(os.path.join(_MODEL_DIR, "iso_blur.joblib"))
+feature_names = json.load(open(os.path.join(_MODEL_DIR, "feature_names.json")))
+
+# Lookup table for known Blur addresses (fast path)
+_lookup_path = os.path.join(_DATA_DIR, "nft_feats_labeled_T30.csv")
+if os.path.exists(_lookup_path):
+    df_lookup = pd.read_csv(_lookup_path).set_index("address")
+else:
+    df_lookup = pd.DataFrame()
+
+# IF score normalization bounds
+if len(df_lookup) > 0:
+    _iso_raw_all = -iso_model.decision_function(df_lookup[feature_names].fillna(0).values)
+    _iso_min = float(_iso_raw_all.min())
+    _iso_max = float(_iso_raw_all.max())
+else:
+    _iso_min, _iso_max = -0.5, 0.5
 
 
 def _normalize_iso(raw: float) -> float:
@@ -20,37 +42,102 @@ def _normalize_iso(raw: float) -> float:
     return float(np.clip((raw - _iso_min) / (_iso_max - _iso_min), 0.0, 1.0))
 
 
+def _score_features(features: dict, addr: str) -> dict:
+    """Run LGB + IF on a feature dict and return result payload."""
+    feat_vec = np.array([features.get(f, 0.0) for f in feature_names], dtype=float).reshape(1, -1)
+    feat_vec = np.nan_to_num(feat_vec, nan=0.0)
+
+    lgb_score = float(lgb_model.predict_proba(feat_vec)[0][1])
+    iso_raw   = float(-iso_model.decision_function(feat_vec)[0])
+    if_norm   = _normalize_iso(iso_raw)
+    final     = lgb_score * 0.7 + if_norm * 0.3
+
+    buy_count      = features.get("buy_count", 0) or 0
+    blend_in_count = features.get("blend_in_count", 0) or 0
+    wallet_age     = features.get("wallet_age_days", 9999) or 9999
+
+    if buy_count > 9000 or blend_in_count > 100:
+        sybil_type = "hyperactive_bot"
+    elif buy_count > 794:
+        sybil_type = "mid_volume"
+    elif wallet_age < 30:
+        sybil_type = "new_wallet"
+    else:
+        sybil_type = "retail_hunter"
+
+    risk = "high" if final >= 0.6 else "medium" if final >= 0.3 else "low"
+
+    return {
+        "address":          addr,
+        "score":            round(final, 4),
+        "lgb_score":        round(lgb_score, 4),
+        "if_score":         round(if_norm, 4),
+        "risk":             risk,
+        "sybil_type":       sybil_type,
+        "tx_count":         int(features.get("tx_count", 0)),
+        "wallet_age_days":  round(features.get("wallet_age_days", 0), 1),
+        "nft_collections":  int(features.get("buy_collections", 0)),
+        "unique_contracts": int(features.get("unique_interactions", 0)),
+        "total_volume_eth": round(features.get("buy_value", 0) + features.get("sell_value", 0), 4),
+        "data_source":      "cached",
+    }
+
+
 def score_addresses(addresses: list) -> list:
+    """Sync scoring — only uses lookup table (for batch jobs)."""
     results = []
     for addr in addresses:
-        addr = addr.lower()
+        addr = addr.strip().lower()
         if addr in df_lookup.index:
             row = df_lookup.loc[addr]
-            features = row[feature_names].values.reshape(1, -1)
-            lgb_score = float(lgb_model.predict_proba(features)[0][1])
-            iso_raw = float(-iso_model.decision_function(features)[0])
-            if_norm = _normalize_iso(iso_raw)
-            final = lgb_score * 0.7 + if_norm * 0.3
-            buy_count = float(row.get("buy_count", 0) or 0)
-            blend_in_count = float(row.get("blend_in_count", 0) or 0)
-            wallet_age_days = float(row.get("wallet_age_days", 9999) or 9999)
-            if buy_count > 9000 or blend_in_count > 100:
-                sybil_type = "hyperactive_bot"
-            elif buy_count > 794:
-                sybil_type = "mid_volume"
-            elif wallet_age_days < 30:
-                sybil_type = "high_frequency"
-            else:
-                sybil_type = "retail_hunter"
+            features = {f: float(row.get(f, 0) or 0) for f in feature_names}
+            result = _score_features(features, addr)
         else:
-            final = 0.05
-            sybil_type = "unknown"
-
-        risk = "high" if final >= 0.6 else "medium" if final >= 0.3 else "low"
-        results.append({
-            "address": addr,
-            "score": round(float(final), 4),
-            "risk": risk,
-            "sybil_type": sybil_type,
-        })
+            # No live fetch in sync path — return pending marker
+            result = {
+                "address":    addr,
+                "score":      None,
+                "risk":       "unknown",
+                "sybil_type": "unknown",
+                "data_source": "not_found",
+            }
+        results.append(result)
     return results
+
+
+async def score_address_live(address: str) -> dict:
+    """
+    Async single-address scoring with live Etherscan fallback.
+    Used by /v1/verify endpoint.
+    """
+    from services.etherscan import fetch_features
+
+    addr = address.strip().lower()
+
+    # Fast path: cached
+    if addr in df_lookup.index:
+        row = df_lookup.loc[addr]
+        features = {f: float(row.get(f, 0) or 0) for f in feature_names}
+        result = _score_features(features, addr)
+        result["data_source"] = "cached"
+        return result
+
+    # Slow path: live Etherscan fetch
+    try:
+        features = await fetch_features(addr)
+        result = _score_features(features, addr)
+        result["data_source"] = "live"
+        result["wallet_age_days"]  = round(features.get("_wallet_age_days", 0), 1)
+        result["nft_collections"]  = int(features.get("_nft_collections", 0))
+        result["unique_contracts"] = int(features.get("_unique_contracts", 0))
+        result["total_volume_eth"] = round(features.get("_total_volume_eth", 0), 4)
+        return result
+    except Exception as e:
+        return {
+            "address":    addr,
+            "score":      None,
+            "risk":       "error",
+            "sybil_type": "error",
+            "error":      str(e),
+            "data_source": "error",
+        }
