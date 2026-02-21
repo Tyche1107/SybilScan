@@ -9,3 +9,4 @@ venv/
 *.pkl
 dist/
 .DS_Store
+*.joblib
