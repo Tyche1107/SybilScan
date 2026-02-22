@@ -7,6 +7,7 @@ const API_URL = "";
 
 type Tab = "single" | "batch";
 type Risk = "high" | "medium" | "low" | "unknown" | "error";
+type Lang = "en" | "zh";
 
 interface VerifyResult {
   address: string;
@@ -33,43 +34,106 @@ const RISK_COLOR: Record<Risk, string> = {
   error:   "#ef4444",
 };
 
-const RISK_LABEL: Record<Risk, string> = {
-  high:    "HIGH RISK",
-  medium:  "MEDIUM RISK",
-  low:     "LOW RISK",
-  unknown: "UNKNOWN",
-  error:   "ERROR",
+// Theme
+type Theme = {
+  bg: string; bg2: string; bg3: string;
+  border: string; border2: string;
+  text: string; text2: string; text3: string; text4: string;
+  accent: string;
 };
 
-function ScoreBar({ score, sybilScore }: { score: number; sybilScore?: number }) {
+const DARK: Theme = {
+  bg: "#030712", bg2: "#0f172a", bg3: "#1e293b",
+  border: "#0f172a", border2: "#1e293b",
+  text: "#f8fafc", text2: "#e2e8f0", text3: "#94a3b8", text4: "#475569",
+  accent: "#a78bfa",
+};
+const LIGHT: Theme = {
+  bg: "#f8fafc", bg2: "#ffffff", bg3: "#f1f5f9",
+  border: "#e2e8f0", border2: "#e2e8f0",
+  text: "#0f172a", text2: "#1e293b", text3: "#475569", text4: "#94a3b8",
+  accent: "#7c3aed",
+};
+
+// Translations
+const T = {
+  en: {
+    nav_results: "Results", nav_research: "Research", nav_mindmap: "MINDMAP",
+    hero_tag: "Pre-Airdrop Sybil Detection",
+    hero_h1: ["Score any address", "before the airdrop drops"],
+    hero_desc: "LightGBM trained on Blur Season 2. 53K recipients, 9,817 sybil addresses. AUC 0.793 at T-30 vs ARTEMIS post-hoc GNN 0.803. Validated on LayerZero (AUC 0.946).",
+    stats: [["AUC 0.793","Blur T-30"],["AUC 0.946","LayerZero"],["T-180","Signal stable"],["67%","Evasion cost"]],
+    tab_single: "Single address", tab_batch: "Batch scan",
+    placeholder_single: "0x... Ethereum address",
+    btn_scan: "Scan", btn_scanning: "Scanning...",
+    scanning_hint: "Fetching on-chain data... (known: instant, new: ~10s)",
+    btn_batch: "Start batch scan", btn_batching: "Scanning...",
+    batch_placeholder: "0xabc123...\n0xdef456...\nOne address per line (max 50,000)",
+    drop_hint: "Drop CSV or click to upload",
+    risk_high: "HIGH RISK", risk_medium: "MEDIUM RISK", risk_low: "LOW RISK",
+    risk_unknown: "UNKNOWN", risk_error: "ERROR",
+    sybil_prob: "Sybil probability",
+    fields: [["Transactions",""],["Wallet age",""],["NFT collections",""],["Unique contracts",""],["Volume",""],["Sybil type",""]],
+    lgb_label: "LightGBM score", if_label: "Isolation Forest score", src_label: "Data source",
+    src_live: "live (Etherscan)", src_cached: "cached (Blur dataset)",
+    footer: "Model: LightGBM on Blur Season 2. Research: ",
+    chain: "Chain: ETH mainnet only",
+  },
+  zh: {
+    nav_results: "结果", nav_research: "论文", nav_mindmap: "实验图",
+    hero_tag: "空投前女巫检测",
+    hero_h1: ["地址评分", "在空投发放前"],
+    hero_desc: "LightGBM 训练于 Blur Season 2，53K 空投用户，9,817 女巫地址。T-30 AUC 0.793，接近事后 GNN ARTEMIS（0.803）。LayerZero 验证 AUC 0.946。",
+    stats: [["AUC 0.793","Blur T-30"],["AUC 0.946","LayerZero"],["T-180","信号稳定"],["67%","逃避成本"]],
+    tab_single: "单地址", tab_batch: "批量扫描",
+    placeholder_single: "0x... 以太坊地址",
+    btn_scan: "扫描", btn_scanning: "扫描中...",
+    scanning_hint: "获取链上数据中...（已知地址：即时，新地址：约 10s）",
+    btn_batch: "开始批量扫描", btn_batching: "扫描中...",
+    batch_placeholder: "0xabc123...\n0xdef456...\n每行一个地址（最多 50,000）",
+    drop_hint: "拖入 CSV 文件或点击上传",
+    risk_high: "高风险", risk_medium: "中风险", risk_low: "低风险",
+    risk_unknown: "未知", risk_error: "错误",
+    sybil_prob: "女巫概率",
+    fields: [["交易次数",""],["钱包年龄",""],["NFT 集合",""],["合约交互",""],["交易量",""],["女巫类型",""]],
+    lgb_label: "LightGBM 评分", if_label: "Isolation Forest 评分", src_label: "数据来源",
+    src_live: "实时 (Etherscan)", src_cached: "缓存 (Blur 数据集)",
+    footer: "模型：LightGBM，Blur Season 2 训练。研究：",
+    chain: "链：仅支持 ETH 主网",
+  },
+};
+
+function ScoreBar({ score, sybilScore, t, theme }: { score: number; sybilScore?: number; t: typeof T.en; theme: Theme }) {
   const pct = sybilScore ?? Math.round(score * 100);
-  const color = pct >= 60 ? "#ef4444" : pct >= 30 ? "#f59e0b" : "#22c55e";
+  const color = pct >= 70 ? "#ef4444" : pct >= 40 ? "#f59e0b" : "#22c55e";
   return (
     <div style={{ margin: "12px 0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>Sybil probability</span>
+        <span style={{ fontSize: 12, color: theme.text4 }}>{t.sybil_prob}</span>
         <span style={{ fontSize: 14, fontWeight: 700, color }}>{pct}%</span>
       </div>
-      <div style={{ background: "#1e293b", borderRadius: 4, height: 8, overflow: "hidden" }}>
+      <div style={{ background: theme.bg3, borderRadius: 4, height: 8, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 4, transition: "width 0.5s ease" }} />
       </div>
     </div>
   );
 }
 
-function ResultCard({ result }: { result: VerifyResult }) {
+function ResultCard({ result, t, theme }: { result: VerifyResult; t: typeof T.en; theme: Theme }) {
   if (!result) return null;
   const riskColor = RISK_COLOR[result.risk] || "#6b7280";
   const src = result.data_source;
+  const riskLabel = result.risk === "high" ? t.risk_high : result.risk === "medium" ? t.risk_medium :
+    result.risk === "low" ? t.risk_low : result.risk === "error" ? t.risk_error : t.risk_unknown;
 
   return (
     <div style={{
-      background: "#0f172a", border: `1px solid ${riskColor}40`, borderRadius: 12,
+      background: theme.bg2, border: `1px solid ${riskColor}40`, borderRadius: 12,
       padding: "20px 24px", marginTop: 20, maxWidth: 560,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 11, color: "#475569", fontFamily: "monospace", marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: theme.text4, fontFamily: "monospace", marginBottom: 4 }}>
             {result.address}
           </div>
           <div style={{
@@ -77,19 +141,18 @@ function ResultCard({ result }: { result: VerifyResult }) {
             color: riskColor, fontSize: 11, fontWeight: 700,
             padding: "2px 10px", borderRadius: 4, letterSpacing: 1,
           }}>
-            {RISK_LABEL[result.risk]}
+            {riskLabel}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 32, fontWeight: 800, color: riskColor, lineHeight: 1 }}>
             {result.sybil_score ?? (result.score != null ? Math.round(result.score * 100) : "--")}
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#475569", marginLeft: 4 }}>/100</span>
+            <span style={{ fontSize: 14, fontWeight: 400, color: theme.text4, marginLeft: 4 }}>/100</span>
           </div>
-          <div style={{ fontSize: 10, color: "#475569" }}>/ 100</div>
         </div>
       </div>
 
-      {result.score != null && <ScoreBar score={result.score} sybilScore={result.sybil_score} />}
+      {result.score != null && <ScoreBar score={result.score} sybilScore={result.sybil_score} t={t} theme={theme} />}
 
       {result.error && (
         <div style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>{result.error}</div>
@@ -97,37 +160,40 @@ function ResultCard({ result }: { result: VerifyResult }) {
 
       <div style={{
         display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px",
-        marginTop: 16, paddingTop: 16, borderTop: "1px solid #1e293b",
+        marginTop: 16, paddingTop: 16, borderTop: `1px solid ${theme.border2}`,
       }}>
-        {[
-          ["Transactions",    result.tx_count ?? "--"],
-          ["Wallet age",      result.wallet_age_days != null ? `${Math.round(result.wallet_age_days)}d` : "--"],
-          ["NFT collections", result.nft_collections ?? "--"],
-          ["Unique contracts",result.unique_contracts ?? "--"],
-          ["Volume",          result.total_volume_eth != null ? `${result.total_volume_eth.toFixed(3)} ETH` : "--"],
-          ["Sybil type",      result.sybil_type ?? "--"],
-        ].map(([label, value]) => (
-          <div key={label as string}>
-            <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-            <div style={{ fontSize: 13, color: "#e2e8f0", fontWeight: 500 }}>{String(value)}</div>
-          </div>
-        ))}
+        {t.fields.map(([label], i) => {
+          const vals = [
+            result.tx_count ?? "--",
+            result.wallet_age_days != null ? `${Math.round(result.wallet_age_days)}d` : "--",
+            result.nft_collections ?? "--",
+            result.unique_contracts ?? "--",
+            result.total_volume_eth != null ? `${result.total_volume_eth.toFixed(3)} ETH` : "--",
+            result.sybil_type ?? "--",
+          ];
+          return (
+            <div key={label as string}>
+              <div style={{ fontSize: 10, color: theme.text4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+              <div style={{ fontSize: 13, color: theme.text2, fontWeight: 500 }}>{String(vals[i])}</div>
+            </div>
+          );
+        })}
       </div>
 
       {result.lgb_score != null && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #1e293b", display: "flex", gap: 16 }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.border2}`, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 10, color: "#475569" }}>LightGBM score</div>
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>{(result.lgb_score * 100).toFixed(1)}%</div>
+            <div style={{ fontSize: 10, color: theme.text4 }}>{t.lgb_label}</div>
+            <div style={{ fontSize: 12, color: theme.text3 }}>{(result.lgb_score * 100).toFixed(1)}%</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#475569" }}>Isolation Forest score</div>
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>{(result.if_score! * 100).toFixed(1)}%</div>
+            <div style={{ fontSize: 10, color: theme.text4 }}>{t.if_label}</div>
+            <div style={{ fontSize: 12, color: theme.text3 }}>{(result.if_score! * 100).toFixed(1)}%</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: "#475569" }}>Data source</div>
-            <div style={{ fontSize: 12, color: src === "live" ? "#a78bfa" : "#94a3b8" }}>
-              {src === "live" ? "live (Etherscan)" : src === "cached" ? "cached (Blur dataset)" : src}
+            <div style={{ fontSize: 10, color: theme.text4 }}>{t.src_label}</div>
+            <div style={{ fontSize: 12, color: src === "live" ? theme.accent : theme.text3 }}>
+              {src === "live" ? t.src_live : src === "cached" ? t.src_cached : src}
             </div>
           </div>
         </div>
@@ -139,6 +205,11 @@ function ResultCard({ result }: { result: VerifyResult }) {
 export default function Home() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("single");
+  const [isDark, setIsDark] = useState(false);
+  const [lang, setLang] = useState<Lang>("en");
+
+  const theme = isDark ? DARK : LIGHT;
+  const t = T[lang];
 
   // Single address
   const [singleAddr, setSingleAddr] = useState("");
@@ -186,9 +257,7 @@ export default function Home() {
   }, []);
 
   const getAddresses = useCallback(async (): Promise<string[]> => {
-    if (batchText.trim()) {
-      return batchText.split("\n").map(a => a.trim()).filter(Boolean);
-    }
+    if (batchText.trim()) return batchText.split("\n").map(a => a.trim()).filter(Boolean);
     if (csvFile) {
       return new Promise(resolve => {
         const r = new FileReader();
@@ -230,62 +299,71 @@ export default function Home() {
     }
   };
 
+  const btnStyle = (active: boolean) => ({
+    padding: "7px 20px", borderRadius: 6, border: "none", cursor: "pointer",
+    fontSize: 13, fontWeight: 600 as const,
+    background: active ? theme.bg3 : "transparent",
+    color: active ? theme.text : theme.text4,
+    transition: "all 0.15s",
+  });
+
   return (
-    <div style={{ minHeight: "100vh", background: "#030712", color: "#e2e8f0", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: theme.bg, color: theme.text, fontFamily: "system-ui, sans-serif", transition: "background 0.2s, color 0.2s" }}>
       {/* nav */}
-      <nav style={{ borderBottom: "1px solid #0f172a", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <nav style={{ borderBottom: `1px solid ${theme.border}`, padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#a78bfa" }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: theme.accent }} />
           <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: -0.5 }}>SybilScan</span>
         </div>
-        <div style={{ display: "flex", gap: 24, fontSize: 13, color: "#475569" }}>
-          <a href="/results" style={{ color: "#475569", textDecoration: "none" }}>Results</a>
-          <a href="https://github.com/Tyche1107/pre-airdrop-detection" target="_blank" rel="noreferrer" style={{ color: "#475569", textDecoration: "none" }}>Research</a>
-          <a href="https://tyche1107.github.io/pre-airdrop-detection/MINDMAP.html" target="_blank" rel="noreferrer" style={{ color: "#475569", textDecoration: "none" }}>MINDMAP</a>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, fontSize: 13 }}>
+          <a href="/results" style={{ color: theme.text4, textDecoration: "none" }}>{t.nav_results}</a>
+          <a href="https://github.com/Tyche1107/pre-airdrop-detection" target="_blank" rel="noreferrer" style={{ color: theme.text4, textDecoration: "none" }}>{t.nav_research}</a>
+          <a href="https://tyche1107.github.io/pre-airdrop-detection/MINDMAP.html" target="_blank" rel="noreferrer" style={{ color: theme.text4, textDecoration: "none" }}>{t.nav_mindmap}</a>
+          {/* language toggle */}
+          <button onClick={() => setLang(l => l === "en" ? "zh" : "en")} style={{
+            background: theme.bg3, border: `1px solid ${theme.border2}`, borderRadius: 6,
+            padding: "4px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: theme.text3,
+          }}>
+            {lang === "en" ? "中文" : "EN"}
+          </button>
+          {/* dark/light toggle */}
+          <button onClick={() => setIsDark(d => !d)} style={{
+            background: theme.bg3, border: `1px solid ${theme.border2}`, borderRadius: 6,
+            padding: "4px 10px", fontSize: 12, cursor: "pointer", color: theme.text3,
+          }}>
+            {isDark ? "☀" : "◑"}
+          </button>
         </div>
       </nav>
 
       <main style={{ maxWidth: 680, margin: "0 auto", padding: "64px 24px" }}>
         {/* hero */}
         <div style={{ marginBottom: 48 }}>
-          <div style={{ fontSize: 11, letterSpacing: 2, color: "#a78bfa", textTransform: "uppercase", marginBottom: 12 }}>
-            Pre-Airdrop Sybil Detection
+          <div style={{ fontSize: 11, letterSpacing: 2, color: theme.accent, textTransform: "uppercase", marginBottom: 12 }}>
+            {t.hero_tag}
           </div>
-          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1, margin: 0, lineHeight: 1.1, color: "#f8fafc" }}>
-            Score any address<br />before the airdrop drops
+          <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1, margin: 0, lineHeight: 1.1, color: theme.text }}>
+            {t.hero_h1[0]}<br />{t.hero_h1[1]}
           </h1>
-          <p style={{ color: "#475569", marginTop: 16, fontSize: 15, lineHeight: 1.6, maxWidth: 520 }}>
-            LightGBM trained on Blur Season 2. 53K airdrop recipients, 9,817 sybil addresses. AUC 0.793 at T-30 (vs ARTEMIS post-hoc GNN 0.803).
-            Validated on LayerZero (AUC 0.946). Detects sybil behavioral fingerprints 90+ days before distribution.
+          <p style={{ color: theme.text4, marginTop: 16, fontSize: 15, lineHeight: 1.6, maxWidth: 520 }}>
+            {t.hero_desc}
           </p>
+          <div style={{ marginTop: 8, fontSize: 12, color: theme.text4 }}>{t.chain}</div>
 
           <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
-            {[
-              ["AUC 0.793", "Blur T-30"],
-              ["AUC 0.946", "LayerZero"],
-              ["T-180", "Signal stable"],
-              ["67%", "Evasion cost"],
-            ].map(([val, label]) => (
-              <div key={val} style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, padding: "8px 14px" }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>{val}</div>
-                <div style={{ fontSize: 11, color: "#475569" }}>{label}</div>
+            {t.stats.map(([val, label]) => (
+              <div key={val} style={{ background: theme.bg2, border: `1px solid ${theme.border2}`, borderRadius: 8, padding: "8px 14px" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: theme.accent }}>{val}</div>
+                <div style={{ fontSize: 11, color: theme.text4 }}>{label}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* tabs */}
-        <div style={{ display: "flex", gap: 2, background: "#0f172a", borderRadius: 8, padding: 4, marginBottom: 24, width: "fit-content" }}>
-          {(["single", "batch"] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: "7px 20px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
-              background: tab === t ? "#1e293b" : "transparent",
-              color: tab === t ? "#e2e8f0" : "#475569",
-              transition: "all 0.15s",
-            }}>
-              {t === "single" ? "Single address" : "Batch scan"}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 2, background: theme.bg2, borderRadius: 8, padding: 4, marginBottom: 24, width: "fit-content", border: `1px solid ${theme.border2}` }}>
+          <button onClick={() => setTab("single")} style={btnStyle(tab === "single")}>{t.tab_single}</button>
+          <button onClick={() => setTab("batch")} style={btnStyle(tab === "batch")}>{t.tab_batch}</button>
         </div>
 
         {/* single address panel */}
@@ -296,28 +374,23 @@ export default function Home() {
                 value={singleAddr}
                 onChange={e => { setSingleAddr(e.target.value); setSingleResult(null); setSingleError(""); }}
                 onKeyDown={e => e.key === "Enter" && handleSingleScan()}
-                placeholder="0x... Ethereum address"
+                placeholder={t.placeholder_single}
                 style={{
-                  flex: 1, background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
-                  padding: "12px 16px", color: "#e2e8f0", fontSize: 14, fontFamily: "monospace",
-                  outline: "none",
+                  flex: 1, background: theme.bg2, border: `1px solid ${theme.border2}`, borderRadius: 8,
+                  padding: "12px 16px", color: theme.text, fontSize: 14, fontFamily: "monospace", outline: "none",
                 }}
               />
               <button onClick={handleSingleScan} disabled={scanning || !singleAddr.trim()} style={{
-                background: "#a78bfa", color: "#030712", border: "none", borderRadius: 8,
+                background: theme.accent, color: isDark ? "#030712" : "#ffffff", border: "none", borderRadius: 8,
                 padding: "12px 22px", fontSize: 14, fontWeight: 700, cursor: "pointer",
                 opacity: scanning || !singleAddr.trim() ? 0.5 : 1, whiteSpace: "nowrap",
               }}>
-                {scanning ? "Scanning..." : "Scan"}
+                {scanning ? t.btn_scanning : t.btn_scan}
               </button>
             </div>
-            {scanning && (
-              <div style={{ marginTop: 16, color: "#a78bfa", fontSize: 13 }}>
-                Fetching on-chain data... (known addresses: instant, new addresses: ~10s)
-              </div>
-            )}
+            {scanning && <div style={{ marginTop: 16, color: theme.accent, fontSize: 13 }}>{t.scanning_hint}</div>}
             {singleError && <div style={{ color: "#ef4444", marginTop: 12, fontSize: 13 }}>{singleError}</div>}
-            {singleResult && <ResultCard result={singleResult} />}
+            {singleResult && <ResultCard result={singleResult} t={t} theme={theme} />}
           </div>
         )}
 
@@ -327,16 +400,14 @@ export default function Home() {
             <textarea
               value={batchText}
               onChange={e => setBatchText(e.target.value)}
-              placeholder={"0xabc123...\n0xdef456...\nOne address per line (max 50,000)"}
+              placeholder={t.batch_placeholder}
               rows={6}
               style={{
-                width: "100%", background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,
-                padding: "14px 16px", color: "#e2e8f0", fontSize: 13, fontFamily: "monospace",
+                width: "100%", background: theme.bg2, border: `1px solid ${theme.border2}`, borderRadius: 8,
+                padding: "14px 16px", color: theme.text, fontSize: 13, fontFamily: "monospace",
                 outline: "none", resize: "vertical", boxSizing: "border-box",
               }}
             />
-
-            {/* CSV drop zone */}
             <div
               onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -347,37 +418,35 @@ export default function Home() {
               }}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                marginTop: 10, border: `1px dashed ${isDragging ? "#a78bfa" : "#1e293b"}`,
-                borderRadius: 8, padding: "20px", textAlign: "center", cursor: "pointer",
-                background: isDragging ? "#1e293b20" : "transparent", transition: "all 0.15s",
+                marginTop: 10, border: `1px dashed ${isDragging ? theme.accent : theme.border2}`,
+                borderRadius: 8, padding: 20, textAlign: "center", cursor: "pointer",
+                background: isDragging ? `${theme.accent}10` : "transparent", transition: "all 0.15s",
               }}
             >
               <input ref={fileInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) { setCsvFile(f); setBatchText(""); } }} />
-              <div style={{ color: "#475569", fontSize: 13 }}>
-                {csvFile ? `${csvFile.name} selected` : "Drop CSV file or click to upload"}
+              <div style={{ color: theme.text4, fontSize: 13 }}>
+                {csvFile ? csvFile.name : t.drop_hint}
               </div>
             </div>
-
             <button
               onClick={handleBatchScan}
               disabled={batchScanning || (!batchText.trim() && !csvFile)}
               style={{
-                marginTop: 14, background: "#a78bfa", color: "#030712", border: "none",
-                borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
+                marginTop: 14, background: theme.accent, color: isDark ? "#030712" : "#ffffff",
+                border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
                 cursor: "pointer", opacity: batchScanning || (!batchText.trim() && !csvFile) ? 0.5 : 1,
               }}
             >
-              {batchScanning ? `Scanning... ${batchProgress}%` : "Start batch scan"}
+              {batchScanning ? `${t.btn_batching} ${batchProgress}%` : t.btn_batch}
             </button>
-            {batchStatus && <div style={{ marginTop: 10, color: "#94a3b8", fontSize: 13 }}>{batchStatus}</div>}
+            {batchStatus && <div style={{ marginTop: 10, color: theme.text3, fontSize: 13 }}>{batchStatus}</div>}
           </div>
         )}
 
-        {/* footer note */}
-        <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid #0f172a", color: "#334155", fontSize: 12 }}>
-          Model: LightGBM trained on Blur Season 2. Research:{" "}
-          <a href="https://github.com/Tyche1107/pre-airdrop-detection" target="_blank" rel="noreferrer" style={{ color: "#475569" }}>
+        <div style={{ marginTop: 60, paddingTop: 24, borderTop: `1px solid ${theme.border}`, color: theme.text4, fontSize: 12 }}>
+          {t.footer}
+          <a href="https://github.com/Tyche1107/pre-airdrop-detection" target="_blank" rel="noreferrer" style={{ color: theme.text3 }}>
             github.com/Tyche1107/pre-airdrop-detection
           </a>
         </div>
