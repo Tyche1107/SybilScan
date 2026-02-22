@@ -10,14 +10,21 @@ type Risk = "high" | "medium" | "low" | "unknown" | "error";
 type Lang = "en" | "zh";
 type Chain = "eth" | "arb" | "poly" | "base" | "op" | "bsc";
 
-const CHAINS: { id: Chain; label: string; name: string }[] = [
+const CHAINS: { id: Chain; label: string; name: string; soon?: boolean }[] = [
   { id: "eth",  label: "ETH",  name: "Ethereum" },
   { id: "arb",  label: "ARB",  name: "Arbitrum" },
   { id: "poly", label: "POLY", name: "Polygon" },
-  { id: "base", label: "BASE", name: "Base" },
-  { id: "op",   label: "OP",   name: "Optimism" },
-  { id: "bsc",  label: "BSC",  name: "BNB Chain" },
+  { id: "base", label: "BASE", name: "Base",     soon: true },
+  { id: "op",   label: "OP",   name: "Optimism", soon: true },
+  { id: "bsc",  label: "BSC",  name: "BNB Chain",soon: true },
 ];
+
+interface TopFeature {
+  feature: string;
+  label: string;
+  value: number;
+  contribution: number;
+}
 
 interface VerifyResult {
   address: string;
@@ -34,6 +41,7 @@ interface VerifyResult {
   error?: string;
   lgb_score?: number;
   if_score?: number;
+  top_features?: TopFeature[];
 }
 
 const RISK_COLOR: Record<Risk, string> = {
@@ -87,7 +95,9 @@ const T = {
     lgb_label: "LightGBM score", if_label: "Isolation Forest score", src_label: "Data source",
     src_live: "live (Etherscan)", src_cached: "cached (Blur dataset)",
     footer: "Model: LightGBM on Blur Season 2. Research: ",
-    chain: "Chain: ETH mainnet only",
+    chain_label: (name: string) => `Chain: ${name}`,
+    top_signals: "Top signals",
+    contributes: "contributes",
   },
   zh: {
     nav_results: "结果", nav_research: "论文", nav_mindmap: "实验图",
@@ -109,7 +119,9 @@ const T = {
     lgb_label: "LightGBM 评分", if_label: "Isolation Forest 评分", src_label: "数据来源",
     src_live: "实时 (Etherscan)", src_cached: "缓存 (Blur 数据集)",
     footer: "模型：LightGBM，Blur Season 2 训练。研究：",
-    chain: "链：仅支持 ETH 主网",
+    chain_label: (name: string) => `当前链：${name}`,
+    top_signals: "关键信号",
+    contributes: "贡献",
   },
 };
 
@@ -189,6 +201,35 @@ function ResultCard({ result, t, theme }: { result: VerifyResult; t: typeof T.en
           );
         })}
       </div>
+
+      {result.top_features && result.top_features.length > 0 && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${theme.border2}` }}>
+          <div style={{ fontSize: 10, color: theme.text4, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+            {t.top_signals}
+          </div>
+          {result.top_features.map(f => {
+            const isPositive = f.contribution > 0;
+            const barColor = isPositive ? "#ef4444" : "#22c55e";
+            const pct = Math.min(Math.abs(f.contribution) * 200, 100);
+            return (
+              <div key={f.feature} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, color: theme.text3 }}>{f.label}</span>
+                  <span style={{ fontSize: 11, color: theme.text4 }}>
+                    {f.value.toFixed(2)} &nbsp;
+                    <span style={{ color: isPositive ? "#ef4444" : "#22c55e", fontWeight: 600 }}>
+                      {isPositive ? "+" : ""}{(f.contribution * 100).toFixed(1)}%
+                    </span>
+                  </span>
+                </div>
+                <div style={{ background: theme.bg3, borderRadius: 3, height: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 0.4s ease" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {result.lgb_score != null && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.border2}`, display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -359,7 +400,9 @@ export default function Home() {
           <p style={{ color: theme.text4, marginTop: 16, fontSize: 15, lineHeight: 1.6, maxWidth: 520 }}>
             {t.hero_desc}
           </p>
-          <div style={{ marginTop: 8, fontSize: 12, color: theme.text4 }}>{t.chain}</div>
+          <div style={{ marginTop: 8, fontSize: 12, color: theme.text4 }}>
+            {t.chain_label(CHAINS.find(c => c.id === chain)?.name ?? chain.toUpperCase())}
+          </div>
 
           <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
             {t.stats.map(([val, label]) => (
@@ -380,13 +423,30 @@ export default function Home() {
         {/* chain selector */}
         <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
           {CHAINS.map(c => (
-            <button key={c.id} onClick={() => setChain(c.id)} style={{
-              padding: "5px 14px", borderRadius: 20, border: `1px solid ${chain === c.id ? theme.accent : theme.border2}`,
-              background: chain === c.id ? `${theme.accent}15` : "transparent",
-              color: chain === c.id ? theme.accent : theme.text4,
-              fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
-            }}>
+            <button
+              key={c.id}
+              onClick={() => !c.soon && setChain(c.id)}
+              title={c.soon ? "Coming soon (paid tier)" : c.name}
+              style={{
+                position: "relative", padding: "5px 14px", borderRadius: 20,
+                border: `1px solid ${chain === c.id ? theme.accent : theme.border2}`,
+                background: chain === c.id ? `${theme.accent}15` : "transparent",
+                color: chain === c.id ? theme.accent : c.soon ? theme.text4 : theme.text3,
+                fontSize: 12, fontWeight: 600,
+                cursor: c.soon ? "default" : "pointer",
+                opacity: c.soon ? 0.45 : 1,
+                transition: "all 0.15s",
+              }}
+            >
               {c.label}
+              {c.soon && (
+                <span style={{
+                  position: "absolute", top: -7, right: -4,
+                  fontSize: 8, background: theme.bg3, color: theme.text4,
+                  padding: "1px 4px", borderRadius: 3, fontWeight: 700,
+                  border: `1px solid ${theme.border2}`,
+                }}>SOON</span>
+              )}
             </button>
           ))}
         </div>

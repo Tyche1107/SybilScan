@@ -38,6 +38,54 @@ def _normalize_iso(raw: float) -> float:
     return float(np.clip((raw - _iso_min) / (_iso_max - _iso_min), 0.0, 1.0))
 
 
+# Human-readable labels for each feature
+_FEATURE_LABELS = {
+    "buy_count":           "NFT buy count",
+    "buy_value":           "Buy volume (ETH)",
+    "buy_collections":     "NFT collections",
+    "sell_count":          "Sell count",
+    "sell_value":          "Sell volume (ETH)",
+    "tx_count":            "Total transactions",
+    "total_trade_count":   "Total trades",
+    "sell_ratio":          "Sell ratio",
+    "pnl_proxy":           "PnL proxy (ETH)",
+    "wallet_age_days":     "Wallet age (days)",
+    "days_since_last_buy": "Days since last buy",
+    "recent_activity":     "Recent activity (30d)",
+    "blend_in_count":      "Blend borrows",
+    "blend_out_count":     "Blend repays",
+    "blend_net_value":     "Blend net value",
+    "LP_count":            "LP tokens held",
+    "unique_interactions": "Unique contracts",
+    "ratio":               "Blend activity ratio",
+    "buy_last_ts":         "Last buy timestamp",
+    "buy_first_ts":        "First buy timestamp",
+    "first_tx_ts":         "First tx timestamp",
+    "DeLP_count":          "DeLP count",
+}
+
+
+def _top_features(feat_vec: np.ndarray, n: int = 3) -> list:
+    """Return top-n features by per-prediction LightGBM contribution."""
+    try:
+        # pred_contrib returns shape (1, n_features+1); last col is bias
+        contribs = lgb_model.predict(feat_vec, pred_contrib=True)[0]
+        feature_contribs = contribs[:-1]  # drop bias
+        top_idx = np.argsort(np.abs(feature_contribs))[::-1][:n]
+        result = []
+        for i in top_idx:
+            name = feature_names[i]
+            result.append({
+                "feature":      name,
+                "label":        _FEATURE_LABELS.get(name, name),
+                "value":        round(float(feat_vec[0][i]), 4),
+                "contribution": round(float(feature_contribs[i]), 4),
+            })
+        return result
+    except Exception:
+        return []
+
+
 def _score_features(features: dict, addr: str) -> dict:
     """Run LGB + IF on a feature dict and return result payload."""
     feat_vec = np.array([features.get(f, 0.0) for f in feature_names], dtype=float).reshape(1, -1)
@@ -77,6 +125,7 @@ def _score_features(features: dict, addr: str) -> dict:
         "nft_collections":  int(features.get("buy_collections", 0)),
         "unique_contracts": int(features.get("unique_interactions", 0)),
         "total_volume_eth": round(features.get("buy_value", 0) + features.get("sell_value", 0), 4),
+        "top_features":     _top_features(feat_vec),
         "data_source":      "cached",
     }
 
