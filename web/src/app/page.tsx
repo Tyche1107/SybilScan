@@ -8,15 +8,25 @@ const API_URL = "";
 type Tab = "single" | "batch";
 type Risk = "high" | "medium" | "low" | "unknown" | "error";
 type Lang = "en" | "zh";
-type Chain = "eth" | "arb" | "poly" | "base" | "op" | "bsc";
+type Chain = "eth" | "arb" | "poly" | "linea" | "blast" | "scroll" | "mantle" | "taiko" | "gnosis" | "celo" | "moonbeam" | "base" | "op" | "bsc";
 
 const CHAINS: { id: Chain; label: string; name: string; soon?: boolean }[] = [
-  { id: "eth",  label: "ETH",  name: "Ethereum" },
-  { id: "arb",  label: "ARB",  name: "Arbitrum" },
-  { id: "poly", label: "POLY", name: "Polygon" },
-  { id: "base", label: "BASE", name: "Base",     soon: true },
-  { id: "op",   label: "OP",   name: "Optimism", soon: true },
-  { id: "bsc",  label: "BSC",  name: "BNB Chain",soon: true },
+  // Free tier
+  { id: "eth",      label: "ETH",     name: "Ethereum" },
+  { id: "arb",      label: "ARB",     name: "Arbitrum" },
+  { id: "poly",     label: "POLY",    name: "Polygon" },
+  { id: "linea",    label: "Linea",   name: "Linea" },
+  { id: "blast",    label: "Blast",   name: "Blast" },
+  { id: "scroll",   label: "Scroll",  name: "Scroll" },
+  { id: "mantle",   label: "Mantle",  name: "Mantle" },
+  { id: "taiko",    label: "Taiko",   name: "Taiko" },
+  { id: "gnosis",   label: "Gnosis",  name: "Gnosis" },
+  { id: "celo",     label: "Celo",    name: "Celo" },
+  { id: "moonbeam", label: "Moonbeam",name: "Moonbeam" },
+  // Paid tier only
+  { id: "base",     label: "BASE",    name: "Base",     soon: true },
+  { id: "op",       label: "OP",      name: "Optimism", soon: true },
+  { id: "bsc",      label: "BSC",     name: "BNB Chain",soon: true },
 ];
 
 interface TopFeature {
@@ -82,7 +92,7 @@ const T = {
     hero_desc: "LightGBM trained on Blur Season 2. 53K recipients, 9,817 sybil addresses. AUC 0.793 at T-30 vs ARTEMIS post-hoc GNN 0.803. Validated on LayerZero (AUC 0.946).",
     stats: [["AUC 0.793","Blur T-30"],["AUC 0.946","LayerZero"],["T-180","Signal stable"],["67%","Evasion cost"]],
     tab_single: "Single address", tab_batch: "Batch scan",
-    placeholder_single: "0x... Ethereum address",
+    placeholder_single: "0x... wallet address",
     btn_scan: "Scan", btn_scanning: "Scanning...",
     scanning_hint: "Fetching on-chain data... (known: instant, new: ~10s)",
     btn_batch: "Start batch scan", btn_batching: "Scanning...",
@@ -106,7 +116,7 @@ const T = {
     hero_desc: "LightGBM 训练于 Blur Season 2，53K 空投用户，9,817 女巫地址。T-30 AUC 0.793，接近事后 GNN ARTEMIS（0.803）。LayerZero 验证 AUC 0.946。",
     stats: [["AUC 0.793","Blur T-30"],["AUC 0.946","LayerZero"],["T-180","信号稳定"],["67%","逃避成本"]],
     tab_single: "单地址", tab_batch: "批量扫描",
-    placeholder_single: "0x... 以太坊地址",
+    placeholder_single: "0x... 钱包地址",
     btn_scan: "扫描", btn_scanning: "扫描中...",
     scanning_hint: "获取链上数据中...（已知地址：即时，新地址：约 10s）",
     btn_batch: "开始批量扫描", btn_batching: "扫描中...",

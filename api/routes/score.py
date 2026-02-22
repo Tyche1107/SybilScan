@@ -5,7 +5,11 @@ import asyncio
 
 router = APIRouter()
 
-SUPPORTED_CHAINS = {"eth", "arb", "poly", "base", "op", "bsc"}
+SUPPORTED_CHAINS = {
+    "eth", "arb", "poly",
+    "linea", "blast", "scroll", "mantle", "taiko", "gnosis", "celo", "moonbeam",
+    "base", "op", "bsc",
+}
 
 
 class ScoreRequest(BaseModel):

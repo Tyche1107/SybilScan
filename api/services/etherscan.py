@@ -10,12 +10,22 @@ import httpx
 
 # ── API Keys (set env vars or fall back to defaults) ─────────────────────────
 CHAIN_CONFIG = {
-    "eth":  {"chainid": 1,      "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
-    "arb":  {"chainid": 42161,  "key": os.getenv("ETHERSCAN_ARB",  "")},
-    "poly": {"chainid": 137,    "key": os.getenv("ETHERSCAN_POLY", "")},
-    "base": {"chainid": 8453,   "key": os.getenv("ETHERSCAN_BASE", "")},
-    "op":   {"chainid": 10,     "key": os.getenv("ETHERSCAN_OP",   "")},
-    "bsc":  {"chainid": 56,     "key": os.getenv("ETHERSCAN_BSC",  "")},
+    # Free tier (Etherscan V2 — single key routes by chainid)
+    "eth":      {"chainid": 1,       "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "arb":      {"chainid": 42161,   "key": os.getenv("ETHERSCAN_ARB",  "")},
+    "poly":     {"chainid": 137,     "key": os.getenv("ETHERSCAN_POLY", "")},
+    "linea":    {"chainid": 59144,   "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "blast":    {"chainid": 81457,   "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "scroll":   {"chainid": 534352,  "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "mantle":   {"chainid": 5000,    "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "taiko":    {"chainid": 167000,  "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "gnosis":   {"chainid": 100,     "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "celo":     {"chainid": 42220,   "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    "moonbeam": {"chainid": 1284,    "key": os.getenv("ETHERSCAN_ETH",  "EH2EBW54AHN4JC1DR5ZC12GDKFG554JX7D")},
+    # Paid tier only
+    "base":     {"chainid": 8453,    "key": os.getenv("ETHERSCAN_BASE", "")},
+    "op":       {"chainid": 10,      "key": os.getenv("ETHERSCAN_OP",   "")},
+    "bsc":      {"chainid": 56,      "key": os.getenv("ETHERSCAN_BSC",  "")},
 }
 
 # Etherscan v2 — single endpoint, chain routed by chainid
