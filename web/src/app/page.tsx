@@ -253,13 +253,13 @@ export default function Home() {
             Score any address<br />before the airdrop drops
           </h1>
           <p style={{ color: "#475569", marginTop: 16, fontSize: 15, lineHeight: 1.6, maxWidth: 520 }}>
-            LightGBM + Isolation Forest trained on Blur Season 2 (251K addresses, AUC 0.905).
+            LightGBM trained on Blur Season 2. 53K airdrop recipients, 9,817 sybil addresses. AUC 0.793 at T-30 (vs ARTEMIS post-hoc GNN 0.803).
             Validated on LayerZero (AUC 0.946). Detects sybil behavioral fingerprints 90+ days before distribution.
           </p>
 
           <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
             {[
-              ["AUC 0.905", "Blur Season 2"],
+              ["AUC 0.793", "Blur T-30"],
               ["AUC 0.946", "LayerZero"],
               ["T-180", "Signal stable"],
               ["67%", "Evasion cost"],
