@@ -10,6 +10,7 @@ type Risk = "high" | "medium" | "low" | "unknown" | "error";
 
 interface VerifyResult {
   address: string;
+  sybil_score?: number;
   score: number | null;
   risk: Risk;
   sybil_type: string;
@@ -40,8 +41,8 @@ const RISK_LABEL: Record<Risk, string> = {
   error:   "ERROR",
 };
 
-function ScoreBar({ score }: { score: number }) {
-  const pct = Math.round(score * 100);
+function ScoreBar({ score, sybilScore }: { score: number; sybilScore?: number }) {
+  const pct = sybilScore ?? Math.round(score * 100);
   const color = pct >= 60 ? "#ef4444" : pct >= 30 ? "#f59e0b" : "#22c55e";
   return (
     <div style={{ margin: "12px 0" }}>
@@ -81,13 +82,14 @@ function ResultCard({ result }: { result: VerifyResult }) {
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 32, fontWeight: 800, color: riskColor, lineHeight: 1 }}>
-            {result.score != null ? Math.round(result.score * 100) : "--"}
+            {result.sybil_score ?? (result.score != null ? Math.round(result.score * 100) : "--")}
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#475569", marginLeft: 4 }}>/100</span>
           </div>
           <div style={{ fontSize: 10, color: "#475569" }}>/ 100</div>
         </div>
       </div>
 
-      {result.score != null && <ScoreBar score={result.score} />}
+      {result.score != null && <ScoreBar score={result.score} sybilScore={result.sybil_score} />}
 
       {result.error && (
         <div style={{ color: "#ef4444", fontSize: 13, marginTop: 8 }}>{result.error}</div>

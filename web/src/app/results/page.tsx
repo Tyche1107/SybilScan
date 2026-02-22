@@ -10,6 +10,7 @@ type Risk = "high" | "medium" | "low" | "unknown" | "error";
 
 interface ResultRow {
   address: string;
+  sybil_score?: number;
   score: number | null;
   risk: Risk;
   sybil_type: string;
@@ -38,9 +39,9 @@ const RISK_COLOR: Record<string, string> = {
 };
 
 function downloadCsv(results: ResultRow[], jobId: string) {
-  const header = "address,score,risk,sybil_type,tx_count,wallet_age_days,nft_collections,unique_contracts,total_volume_eth";
+  const header = "address,sybil_score,score,risk,sybil_type,tx_count,wallet_age_days,nft_collections,unique_contracts,total_volume_eth";
   const rows = results.map(r =>
-    [r.address, r.score ?? "", r.risk, r.sybil_type, r.tx_count ?? "", r.wallet_age_days ?? "", r.nft_collections ?? "", r.unique_contracts ?? "", r.total_volume_eth ?? ""].join(",")
+    [r.address, r.sybil_score ?? (r.score != null ? Math.round(r.score * 100) : ""), r.score ?? "", r.risk, r.sybil_type, r.tx_count ?? "", r.wallet_age_days ?? "", r.nft_collections ?? "", r.unique_contracts ?? "", r.total_volume_eth ?? ""].join(",")
   );
   const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -223,7 +224,7 @@ function ResultsContent() {
                     {r.address.slice(0, 8)}...{r.address.slice(-6)}
                   </td>
                   <td style={{ padding: "9px 14px", fontWeight: 700, color: RISK_COLOR[r.risk] || "#6b7280" }}>
-                    {r.score != null ? (r.score * 100).toFixed(0) : "--"}
+                    {r.sybil_score ?? (r.score != null ? Math.round(r.score * 100) : "--")}<span style={{fontSize:11,fontWeight:400,color:"#475569"}}>/100</span>
                   </td>
                   <td style={{ padding: "9px 14px" }}>
                     <span style={{

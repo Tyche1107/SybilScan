@@ -61,10 +61,12 @@ def _score_features(features: dict, addr: str) -> dict:
     else:
         sybil_type = "retail_hunter"
 
-    risk = "high" if final >= 0.6 else "medium" if final >= 0.3 else "low"
+    sybil_score = min(100, max(0, round(final * 100)))
+    risk = "high" if sybil_score >= 70 else "medium" if sybil_score >= 40 else "low"
 
     return {
         "address":          addr,
+        "sybil_score":      sybil_score,
         "score":            round(final, 4),
         "lgb_score":        round(lgb_score, 4),
         "if_score":         round(if_norm, 4),
