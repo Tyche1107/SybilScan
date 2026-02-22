@@ -215,7 +215,7 @@ export default function Home() {
         const jr = await fetch(`${API_URL}/v1/jobs/${job_id}`);
         const j = await jr.json();
         setBatchProgress(Math.round((j.progress || 0) * 100));
-        setBatchStatus(`${j.completed || 0} / ${j.total} scored`);
+        setBatchStatus(`Processing ${j.completed || 0} / ${j.total} addresses...`);
         if (j.status === "complete") {
           clearInterval(poll);
           setBatchScanning(false);
@@ -325,7 +325,7 @@ export default function Home() {
             <textarea
               value={batchText}
               onChange={e => setBatchText(e.target.value)}
-              placeholder={"0xabc123...\n0xdef456...\n(one address per line)"}
+              placeholder={"0xabc123...\n0xdef456...\nOne address per line (max 50,000)"}
               rows={6}
               style={{
                 width: "100%", background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8,

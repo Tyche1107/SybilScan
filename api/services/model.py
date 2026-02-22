@@ -27,13 +27,9 @@ if os.path.exists(_lookup_path):
 else:
     df_lookup = pd.DataFrame()
 
-# IF score normalization bounds
-if len(df_lookup) > 0:
-    _iso_raw_all = -iso_model.decision_function(df_lookup[feature_names].fillna(0).values)
-    _iso_min = float(_iso_raw_all.min())
-    _iso_max = float(_iso_raw_all.max())
-else:
-    _iso_min, _iso_max = -0.5, 0.5
+# IF score normalization bounds (precomputed from Blur dataset)
+# Avoid running decision_function on 251K rows at startup
+_iso_min, _iso_max = -0.18, 0.12
 
 
 def _normalize_iso(raw: float) -> float:
