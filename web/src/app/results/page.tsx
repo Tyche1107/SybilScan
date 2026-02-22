@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://45.76.152.169:8001";
+const API_URL = "";
 
 type Risk = "high" | "medium" | "low" | "unknown" | "error";
 
@@ -64,7 +64,7 @@ function ResultsContent() {
   const fetchJob = useCallback(async () => {
     if (!jobId) return;
     try {
-      const res = await fetch(`${API_URL}/v1/jobs/${jobId}`);
+      const res = await fetch(`/api/jobs/${jobId}`);
       if (!res.ok) throw new Error("Job not found");
       const data: JobData = await res.json();
       setJob(data);

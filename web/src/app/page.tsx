@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://45.76.152.169:8001";
+const API_URL = "";
 
 type Tab = "single" | "batch";
 type Risk = "high" | "medium" | "low" | "unknown" | "error";
@@ -162,7 +162,7 @@ export default function Home() {
     setSingleResult(null);
     setSingleError("");
     try {
-      const res = await fetch(`${API_URL}/v1/verify`, {
+      const res = await fetch(`/api/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: addr }),
@@ -206,7 +206,7 @@ export default function Home() {
     setBatchProgress(0);
     setBatchStatus(`Submitting ${addrs.length} addresses...`);
     try {
-      const res = await fetch(`${API_URL}/v1/score`, {
+      const res = await fetch(`/api/score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ addresses: addrs }),
@@ -214,7 +214,7 @@ export default function Home() {
       const { job_id } = await res.json();
       setBatchStatus("Processing...");
       const poll = setInterval(async () => {
-        const jr = await fetch(`${API_URL}/v1/jobs/${job_id}`);
+        const jr = await fetch(`/api/jobs/${job_id}`);
         const j = await jr.json();
         setBatchProgress(Math.round((j.progress || 0) * 100));
         setBatchStatus(`Processing ${j.completed || 0} / ${j.total} addresses...`);
