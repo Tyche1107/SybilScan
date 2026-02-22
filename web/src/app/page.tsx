@@ -8,6 +8,16 @@ const API_URL = "";
 type Tab = "single" | "batch";
 type Risk = "high" | "medium" | "low" | "unknown" | "error";
 type Lang = "en" | "zh";
+type Chain = "eth" | "arb" | "poly" | "base" | "op" | "bsc";
+
+const CHAINS: { id: Chain; label: string; name: string }[] = [
+  { id: "eth",  label: "ETH",  name: "Ethereum" },
+  { id: "arb",  label: "ARB",  name: "Arbitrum" },
+  { id: "poly", label: "POLY", name: "Polygon" },
+  { id: "base", label: "BASE", name: "Base" },
+  { id: "op",   label: "OP",   name: "Optimism" },
+  { id: "bsc",  label: "BSC",  name: "BNB Chain" },
+];
 
 interface VerifyResult {
   address: string;
@@ -207,6 +217,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("single");
   const [isDark, setIsDark] = useState(false);
   const [lang, setLang] = useState<Lang>("en");
+  const [chain, setChain] = useState<Chain>("eth");
 
   const theme = isDark ? DARK : LIGHT;
   const t = T[lang];
@@ -236,7 +247,7 @@ export default function Home() {
       const res = await fetch(`/api/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: addr }),
+        body: JSON.stringify({ address: addr, chain }),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
@@ -278,7 +289,7 @@ export default function Home() {
       const res = await fetch(`/api/score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ addresses: addrs }),
+        body: JSON.stringify({ addresses: addrs, chain }),
       });
       const { job_id } = await res.json();
       setBatchStatus("Processing...");
@@ -364,6 +375,20 @@ export default function Home() {
         <div style={{ display: "flex", gap: 2, background: theme.bg2, borderRadius: 8, padding: 4, marginBottom: 24, width: "fit-content", border: `1px solid ${theme.border2}` }}>
           <button onClick={() => setTab("single")} style={btnStyle(tab === "single")}>{t.tab_single}</button>
           <button onClick={() => setTab("batch")} style={btnStyle(tab === "batch")}>{t.tab_batch}</button>
+        </div>
+
+        {/* chain selector */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+          {CHAINS.map(c => (
+            <button key={c.id} onClick={() => setChain(c.id)} style={{
+              padding: "5px 14px", borderRadius: 20, border: `1px solid ${chain === c.id ? theme.accent : theme.border2}`,
+              background: chain === c.id ? `${theme.accent}15` : "transparent",
+              color: chain === c.id ? theme.accent : theme.text4,
+              fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+            }}>
+              {c.label}
+            </button>
+          ))}
         </div>
 
         {/* single address panel */}

@@ -103,28 +103,30 @@ def score_addresses(addresses: list) -> list:
     return results
 
 
-async def score_address_live(address: str) -> dict:
+async def score_address_live(address: str, chain: str = "eth") -> dict:
     """
     Async single-address scoring with live Etherscan fallback.
-    Used by /v1/verify endpoint.
+    Used by /v1/verify endpoint. Supports multi-chain via `chain` param.
     """
     from services.etherscan import fetch_features
 
     addr = address.strip().lower()
 
-    # Fast path: cached
-    if addr in df_lookup.index:
+    # Fast path: cached (only available for ETH/Blur dataset)
+    if chain == "eth" and addr in df_lookup.index:
         row = df_lookup.loc[addr]
         features = {f: float(row.get(f, 0) or 0) for f in feature_names}
         result = _score_features(features, addr)
         result["data_source"] = "cached"
+        result["chain"] = chain
         return result
 
-    # Slow path: live Etherscan fetch
+    # Slow path: live chain fetch
     try:
-        features = await fetch_features(addr)
+        features = await fetch_features(addr, chain=chain)
         result = _score_features(features, addr)
         result["data_source"] = "live"
+        result["chain"]            = chain
         result["wallet_age_days"]  = round(features.get("_wallet_age_days", 0), 1)
         result["nft_collections"]  = int(features.get("_nft_collections", 0))
         result["unique_contracts"] = int(features.get("_unique_contracts", 0))
@@ -137,5 +139,6 @@ async def score_address_live(address: str) -> dict:
             "risk":       "error",
             "sybil_type": "error",
             "error":      str(e),
+            "chain":      chain,
             "data_source": "error",
         }
